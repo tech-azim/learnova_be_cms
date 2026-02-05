@@ -29,7 +29,7 @@ func ConnectDB(){
 		log.Fatal("Failed to connect db", err)
 	}
 
-	database.AutoMigrate(&models.User{})
+	database.AutoMigrate(&models.User{}, &models.Hero{})
 
 	DB = database
 	log.Print("Successfully connect database")

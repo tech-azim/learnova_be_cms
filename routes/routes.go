@@ -11,22 +11,24 @@ import (
 //   - userController: controller untuk handle user endpoints
 //   - authController: controller untuk handle auth endpoints
 func Router(
-	r *gin.Engine,
-	authController *controllers.AuthController,
+    r *gin.Engine,
+    authController *controllers.AuthController,
+    heroController *controllers.HeroController,
 ) {
-	// Group untuk API versi 1
-	// Semua route akan dimulai dengan /api/v1
-	api := r.Group("/api/v1")
-	{
-		// Auth Routes - untuk login, register, dll
-		// Base path: /api/v1/auth
-		authRoute := api.Group("/auth")
-		{
-			// POST /api/v1/auth/login
-			authRoute.POST("/login", authController.Login)
-			
-			// POST /api/v1/auth/register
-		}
+    api := r.Group("/api/v1")
+    {
+        authRoute := api.Group("/auth")
+        {
+            authRoute.POST("/login", authController.Login)
+        }
 
-	}
+        // Jangan gunakan slash di Group jika ingin path bersih
+        heroRoute := api.Group("/heros")
+        {
+            // "" artinya /api/v1/heros
+            // "/" artinya /api/v1/heros/
+            heroRoute.POST("", heroController.Create) 
+            heroRoute.GET("", heroController.FindAll)
+        }
+    }
 }

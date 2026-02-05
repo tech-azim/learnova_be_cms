@@ -24,11 +24,10 @@ func main() {
 	seedFlag := flag.Bool("seed", false , "Run database seeders")
 	flag.Parse()
     r := gin.Default()
-
+	r.RedirectTrailingSlash = true
 
 	config.ConnectDB()
 
-	fmt.Printf("log seedflag %b", *seedFlag)
 
 	if *seedFlag {
 		seeders.RunAllSeeder(config.DB)
@@ -36,13 +35,20 @@ func main() {
 	}
 
 	userRepo := repositories.NewUserRepository(config.DB)
+	heroRepo := repositories.NewHeroRepository(config.DB)
 
 	authService := services.NewAuthService(userRepo)
+	heroService := services.NewHeroService(heroRepo)
 
 	authController := controllers.NewAuthController(authService)
+	heroController := controllers.NewHeroController(heroService)
 
 
-	routes.Router(r, authController)
+	routes.Router(r, authController, heroController)
+	for _, route := range r.Routes() {
+		fmt.Printf("Method: %s | Path: %s\n", route.Method, route.Path)
+	}
+	r.Run()
     r.Run()
 }
 
