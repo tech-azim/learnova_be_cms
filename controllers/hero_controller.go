@@ -110,7 +110,7 @@ func (ctrl *HeroController) FindAll(c *gin.Context) {
 		params.Limit = 10
 	}
 	
-	data, err := ctrl.heroService.FindAll(params)
+	data,total, err := ctrl.heroService.FindAll(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to fetch heroes",
@@ -123,6 +123,7 @@ func (ctrl *HeroController) FindAll(c *gin.Context) {
 		"pagination": gin.H{
 			"page":  params.Page,
 			"limit": params.Limit,
+			"total": total,
 		},
 	})
 }

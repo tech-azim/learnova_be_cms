@@ -21,10 +21,12 @@ func main() {
 		log.Fatal("env not laod")
 	}
 
+
 	seedFlag := flag.Bool("seed", false , "Run database seeders")
 	flag.Parse()
     r := gin.Default()
 	r.RedirectTrailingSlash = true
+
 
 	config.ConnectDB()
 

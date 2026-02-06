@@ -8,7 +8,7 @@ import (
 
 type HeroService interface {
 	Create(hero models.Hero) (models.Hero, error)
-	FindAll(params utils.PaginationParams) ([]models.Hero, error)
+	FindAll(params utils.PaginationParams) ([]models.Hero,int64, error)
 }
 
 type heroService struct {
@@ -33,11 +33,11 @@ func (h *heroService) Create(hero models.Hero) (models.Hero, error) {
 }
 
 
-func (h *heroService) FindAll(params utils.PaginationParams) ([]models.Hero, error) {
-	data, err := h.heroRepo.FindAll(params)
+func (h *heroService) FindAll(params utils.PaginationParams) ([]models.Hero,int64, error) {
+	data,total, err := h.heroRepo.FindAll(params)
 
 	if err != nil {
-		return []models.Hero{}, err
+		return []models.Hero{},0, err
 	}
-	return data, nil
+	return data,total, nil
 }

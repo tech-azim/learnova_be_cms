@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/tech-azim/be-learnova/middlewares"
 	"github.com/tech-azim/be-learnova/models"
 	"github.com/tech-azim/be-learnova/repositories"
 	"github.com/tech-azim/be-learnova/utils"
@@ -39,11 +40,16 @@ func (a *authService) Login(email string, password string) (string, models.User,
 		return "", models.User{}, errors.New("Wrong password")
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"email": user.Email,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
-	})
+	claims := middlewares.ClaimStruct{
+	UserID: user.ID,
+	Email:  user.Email,
+	RegisteredClaims: jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+	},
+}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 

@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/tech-azim/be-learnova/controllers"
+	"github.com/tech-azim/be-learnova/middlewares"
 )
 
 // Router adalah fungsi untuk setup semua routes aplikasi.
@@ -25,9 +26,10 @@ func Router(
         // Jangan gunakan slash di Group jika ingin path bersih
         heroRoute := api.Group("/heros")
         {
-            // "" artinya /api/v1/heros
-            // "/" artinya /api/v1/heros/
-            heroRoute.POST("", heroController.Create) 
+            // POST dengan auth middleware
+            heroRoute.POST("", middlewares.AuthMiddleware(), heroController.Create)
+            
+            // GET tanpa auth
             heroRoute.GET("", heroController.FindAll)
         }
     }
