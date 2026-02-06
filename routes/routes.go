@@ -6,16 +6,12 @@ import (
 	"github.com/tech-azim/be-learnova/middlewares"
 )
 
-// Router adalah fungsi untuk setup semua routes aplikasi.
-// Function ini menerima parameter:
-//   - r: instance Gin Engine
-//   - userController: controller untuk handle user endpoints
-//   - authController: controller untuk handle auth endpoints
 func Router(
     r *gin.Engine,
     authController *controllers.AuthController,
     heroController *controllers.HeroController,
 ) {
+    r.Static("/uploads", "./uploads")
     api := r.Group("/api/v1")
     {
         authRoute := api.Group("/auth")
@@ -31,6 +27,9 @@ func Router(
             
             // GET tanpa auth
             heroRoute.GET("", heroController.FindAll)
+            heroRoute.GET("/:id", heroController.FindByID)
+            heroRoute.DELETE("/:id", heroController.Delete)
+            heroRoute.PUT(":id", heroController.Update)
         }
     }
 }

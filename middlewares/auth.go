@@ -16,14 +16,7 @@ type ClaimStruct struct {
 	jwt.RegisteredClaims
 }
 
-// Fungsi helper untuk get JWT Secret
-func getJWTSecret() []byte {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		panic("JWT_SECRET environment variable not set")
-	}
-	return []byte(secret)
-}
+
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -39,13 +32,12 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		tokenString = strings.TrimSpace(tokenString)
 
-		jwtSecret := getJWTSecret()
+		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 
 		token, err := jwt.ParseWithClaims(tokenString, &ClaimStruct{}, func(t *jwt.Token) (any, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			fmt.Println("Signing method:", t.Method.Alg())
 			return jwtSecret, nil
 		})
 

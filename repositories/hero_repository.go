@@ -53,9 +53,9 @@ func (h *heroRepository) FindAll(params utils.PaginationParams) ([]models.Hero,i
 // FindByID implements [HeroRepository].
 func (h *heroRepository) FindByID(id uint) (models.Hero, error) {
 	var hero models.Hero
-
-	err := h.db.First(&hero).Error
-
+	
+	err := h.db.Where("id = ?", id).First(&hero).Error
+	
 	return hero, err
 }
 
