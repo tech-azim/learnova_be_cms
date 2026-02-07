@@ -7,7 +7,7 @@ import (
 )
 
 type HeroRepository interface {
-	FindAll(param utils.PaginationParams) ([]models.Hero, error)
+	FindAll(param utils.PaginationParams) ([]models.Hero,int64, error)
 	FindByID(id uint) (models.Hero, error)
 	Create(hero models.Hero) (models.Hero, error)
 	Update(hero models.Hero) (models.Hero, error)
@@ -35,22 +35,27 @@ func (h *heroRepository) Delete(id uint) error {
 }
 
 // FindAll implements [HeroRepository].
-func (h *heroRepository) FindAll(params utils.PaginationParams) ([]models.Hero, error) {
+func (h *heroRepository) FindAll(params utils.PaginationParams) ([]models.Hero,int64, error) {
 	offset := (params.Page - 1) * params.Limit
 
 	var heroes []models.Hero
+	var total int64
+
+	if err := h.db.Model(&models.Hero{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 
 	err := h.db.Offset(offset).Limit(params.Limit).Find(&heroes).Error
 
-	return heroes, err
+	return heroes,total,err
 }
 
 // FindByID implements [HeroRepository].
 func (h *heroRepository) FindByID(id uint) (models.Hero, error) {
 	var hero models.Hero
-
-	err := h.db.First(&hero).Error
-
+	
+	err := h.db.Where("id = ?", id).First(&hero).Error
+	
 	return hero, err
 }
 
