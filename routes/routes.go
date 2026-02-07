@@ -11,6 +11,7 @@ func Router(
 	authController *controllers.AuthController,
 	heroController *controllers.HeroController,
 	programController *controllers.ProgramController,
+	registrationController *controllers.RegistrationController,
 ) {
 	r.Static("/uploads", "./uploads")
 	api := r.Group("/api/v1")
