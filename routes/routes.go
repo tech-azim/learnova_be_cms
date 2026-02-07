@@ -20,13 +20,9 @@ func Router(
 			authRoute.POST("/login", authController.Login)
 		}
 
-		// Jangan gunakan slash di Group jika ingin path bersih
 		heroRoute := api.Group("/heros")
 		{
-			// POST dengan auth middleware
 			heroRoute.POST("", middlewares.AuthMiddleware(), heroController.Create)
-
-			// GET tanpa auth
 			heroRoute.GET("", heroController.FindAll)
 			heroRoute.GET("/:id", heroController.FindByID)
 			heroRoute.DELETE("/:id", middlewares.AuthMiddleware(), heroController.Delete)
