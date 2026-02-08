@@ -21,6 +21,7 @@ type RegistrationRequest struct {
 	Participants  int    `json:"participants" binding:"required,min=1"`
 	PreferredDate string `json:"preferredDate" binding:"required"`
 	Message       string `json:"message"`
+	Status        string `json:"status"`
 }
 
 type RegistrationController struct {
@@ -349,6 +350,7 @@ func (ctrl *RegistrationController) Update(c *gin.Context) {
 		Participants:  req.Participants,
 		PreferredDate: preferredDate,
 		Message:       req.Message,
+		Status: 	   req.Status,
 	}
 
 	// 7. Update ke database

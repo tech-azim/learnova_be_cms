@@ -38,5 +38,19 @@ func Router(
 			programRoute.DELETE(":id", middlewares.AuthMiddleware(), programController.Delete)
 			programRoute.PUT(":id", middlewares.AuthMiddleware(), programController.Update)
 		}
+
+		registrationRoute := api.Group("/registrations")
+		{
+			// PUBLIC (tanpa auth)
+			registrationRoute.POST("", registrationController.Create)
+
+			// PROTECTED (pakai auth)
+			registrationRoute.GET("", middlewares.AuthMiddleware(), registrationController.FindAll)
+			registrationRoute.GET("/:id", middlewares.AuthMiddleware(), registrationController.FindByID)
+			registrationRoute.GET("/program/:programId", middlewares.AuthMiddleware(), registrationController.FindByProgramID)
+			registrationRoute.GET("/by-email", middlewares.AuthMiddleware(), registrationController.FindByEmail)
+			registrationRoute.PUT("/:id", middlewares.AuthMiddleware(), registrationController.Update)
+			registrationRoute.DELETE("/:id", middlewares.AuthMiddleware(), registrationController.Delete)
+		}
 	}
 }
