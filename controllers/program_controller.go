@@ -13,6 +13,7 @@ import (
 	"github.com/tech-azim/be-learnova/models"
 	"github.com/tech-azim/be-learnova/services"
 	"github.com/tech-azim/be-learnova/utils"
+	"github.com/lib/pq"
 )
 
 type ProgramRequest struct {
@@ -158,7 +159,7 @@ func (ctrl *ProgramController) Create(c *gin.Context) {
 		Participants: participants,
 		Level:        level,
 		Description:  description,
-		Benefits:     benefitsStr,
+		Benefits: pq.StringArray(benefitsStr),
 		Image:        filePath,
 	}
 

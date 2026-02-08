@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+	"github.com/lib/pq"
 )
 
 type Program struct {
@@ -12,7 +13,7 @@ type Program struct {
 	Participants string         `json:"participants" gorm:"type:varchar(100)"`
 	Level        string         `json:"level" gorm:"type:varchar(50)"`
 	Description  string         `json:"description" gorm:"type:text"`
-	Benefits     []string       `json:"benefits" gorm:"type:text[]"`
+	Benefits     pq.StringArray `json:"benefits" gorm:"type:text[]"`
 	Image        string         `json:"image" gorm:"type:varchar(255)"`
 	IsDeleted    bool           `json:"is_deleted" gorm:"default:false"`
 	CreatedAt    time.Time      `json:"created_at"`
