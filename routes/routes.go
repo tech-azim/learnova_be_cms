@@ -12,6 +12,7 @@ func Router(
 	heroController *controllers.HeroController,
 	programController *controllers.ProgramController,
 	registrationController *controllers.RegistrationController,
+	serviceController *controllers.ServiceController,
 ) {
 	r.Static("/uploads", "./uploads")
 	api := r.Group("/api/v1")
@@ -27,16 +28,16 @@ func Router(
 			heroRoute.GET("", heroController.FindAll)
 			heroRoute.GET("/:id", heroController.FindByID)
 			heroRoute.DELETE("/:id", middlewares.AuthMiddleware(), heroController.Delete)
-			heroRoute.PUT(":id", middlewares.AuthMiddleware(), heroController.Update)
+			heroRoute.PUT("/:id", middlewares.AuthMiddleware(), heroController.Update)
 		}
 
 		programRoute := api.Group("/programs")
 		{
 			programRoute.POST("", middlewares.AuthMiddleware(), programController.Create)
 			programRoute.GET("", middlewares.AuthMiddleware(), programController.FindAll)
-			programRoute.GET(":id", programController.FindByID)
-			programRoute.DELETE(":id", middlewares.AuthMiddleware(), programController.Delete)
-			programRoute.PUT(":id", middlewares.AuthMiddleware(), programController.Update)
+			programRoute.GET("/:id", programController.FindByID)
+			programRoute.DELETE("/:id", middlewares.AuthMiddleware(), programController.Delete)
+			programRoute.PUT("/:id", middlewares.AuthMiddleware(), programController.Update)
 		}
 
 		registrationRoute := api.Group("/registrations")
@@ -51,6 +52,15 @@ func Router(
 			registrationRoute.GET("/by-email", middlewares.AuthMiddleware(), registrationController.FindByEmail)
 			registrationRoute.PUT("/:id", middlewares.AuthMiddleware(), registrationController.Update)
 			registrationRoute.DELETE("/:id", middlewares.AuthMiddleware(), registrationController.Delete)
+		}
+
+		serviceRoute := api.Group("/services")
+		{
+			serviceRoute.POST("", middlewares.AuthMiddleware(), serviceController.Create)
+			serviceRoute.GET("", serviceController.FindAll)
+			serviceRoute.GET("/:id", serviceController.FindByID)
+			serviceRoute.PUT("/:id", middlewares.AuthMiddleware(), serviceController.Update)
+			serviceRoute.DELETE("/:id", middlewares.AuthMiddleware(), serviceController.Delete)
 		}
 	}
 }
