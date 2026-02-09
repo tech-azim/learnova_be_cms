@@ -73,6 +73,7 @@ func main() {
 	programRepo := repositories.NewProgramRepository(config.DB)
 	registrationRepo := repositories.NewRegistrationRepository(config.DB)
 	serviceRepo := repositories.NewServiceRepository(config.DB)
+	portolioRepo := repositories.NewPortfolioRepository(config.DB)
 
 	// Initialize Services
 	authService := services.NewAuthService(userRepo)
@@ -80,6 +81,7 @@ func main() {
 	programService := services.NewProgramService(programRepo)
 	registrationService := services.RegistrationService(registrationRepo)
 	serviceService := services.NewServiceService(serviceRepo)
+	portfolioService := services.NewPortfolioService(portolioRepo)
 
 	// Initialize Controllers
 	authController := controllers.NewAuthController(authService)
@@ -87,9 +89,10 @@ func main() {
 	programController := controllers.NewProgramController(programService)
 	registrationController := controllers.NewRegistrationController(registrationService, programService)
 	serviceController := controllers.NewServiceController(serviceService)
+	portfolioController := controllers.NewPortfolioController(portfolioService)
 
 	// Routes dipanggil SETELAH semua middleware global
-	routes.Router(r, authController, heroController, programController, registrationController, serviceController)
+	routes.Router(r, authController, heroController, programController, registrationController, serviceController, portfolioController)
 
 	for _, route := range r.Routes() {
 		fmt.Printf("Method: %s | Path: %s\n", route.Method, route.Path)

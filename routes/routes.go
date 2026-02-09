@@ -13,6 +13,7 @@ func Router(
 	programController *controllers.ProgramController,
 	registrationController *controllers.RegistrationController,
 	serviceController *controllers.ServiceController,
+	portfolioController *controllers.PortfolioController,
 ) {
 	r.Static("/uploads", "./uploads")
 	api := r.Group("/api/v1")
@@ -61,6 +62,15 @@ func Router(
 			serviceRoute.GET("/:id", serviceController.FindByID)
 			serviceRoute.PUT("/:id", middlewares.AuthMiddleware(), serviceController.Update)
 			serviceRoute.DELETE("/:id", middlewares.AuthMiddleware(), serviceController.Delete)
+		}
+
+		portfolioRoute := api.Group("/portfolios")
+		{
+			portfolioRoute.POST("", middlewares.AuthMiddleware(), portfolioController.Create)
+			portfolioRoute.GET("", portfolioController.FindAll)
+			portfolioRoute.GET("/:id", portfolioController.FindByID)
+			portfolioRoute.PUT("/:id", middlewares.AuthMiddleware(), portfolioController.Update)
+			portfolioRoute.DELETE("/:id", middlewares.AuthMiddleware(), portfolioController.Delete)
 		}
 	}
 }
