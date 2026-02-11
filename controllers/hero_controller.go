@@ -255,7 +255,7 @@ func (ctrl *HeroController) Update(c *gin.Context) {
 	}
 
 	title := c.PostForm("title")
-	alt := "Hero"
+	alt := c.PostForm("alt")
 	description := c.PostForm("description")
 
 	// Gunakan nilai lama jika tidak ada input baru
