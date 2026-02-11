@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"log"
+
 	"github.com/tech-azim/be-learnova/models"
 	"github.com/tech-azim/be-learnova/utils"
 	"gorm.io/gorm"
@@ -36,22 +38,37 @@ func (p *portfolioRepository) Delete(id uint) error {
 
 // FindAll implements PortfolioRepository.
 func (p *portfolioRepository) FindAll(params utils.PaginationParams) ([]models.Portfolio, int64, error) {
-	offset := (params.Page - 1) * params.Limit
+    offset := (params.Page - 1) * params.Limit
 
-	var portfolios []models.Portfolio
-	var total int64
+    var portfolios []models.Portfolio
+    var total int64
 
-	query := p.db.Model(&models.Portfolio{}).Where("is_deleted = ?", false)
+    // ✅ Debug: Log pagination params
+    log.Printf("=== FindAll Debug ===")
+    log.Printf("Params: Page=%d, Limit=%d, Offset=%d", params.Page, params.Limit, offset)
 
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
+    query := p.db.Model(&models.Portfolio{}).Where("is_deleted = ?", false)
 
-	err := query.Offset(offset).Limit(params.Limit).Find(&portfolios).Error
+    // ✅ Debug: Enable SQL logging
+    query = query.Debug()
 
-	return portfolios, total, err
+    if err := query.Count(&total).Error; err != nil {
+        log.Printf("Error counting portfolios: %v", err)
+        return nil, 0, err
+    }
+    log.Printf("Total count: %d", total)
+
+    err := query.Offset(offset).Limit(params.Limit).Find(&portfolios).Error
+    if err != nil {
+        log.Printf("Error finding portfolios: %v", err)
+        return nil, 0, err
+    }
+
+    log.Printf("Found %d portfolios in result", len(portfolios))
+    log.Printf("Portfolios data: %+v", portfolios)
+
+    return portfolios, total, nil
 }
-
 // FindByID implements PortfolioRepository.
 func (p *portfolioRepository) FindByID(id uint) (models.Portfolio, error) {
 	var portfolio models.Portfolio
