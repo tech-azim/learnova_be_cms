@@ -1,8 +1,12 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,38 +26,100 @@ func NewGalleryController(galleryService services.GalleryService) *GalleryContro
 }
 
 func (ctrl *GalleryController) Create(c *gin.Context) {
-	// Ambil field dari form
+	// 1. Ambil file
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "File is required",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// 2. Validasi tipe file
+	allowedExtensions := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".gif":  true,
+		".webp": true,
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !allowedExtensions[ext] {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid file type. Only jpg, jpeg, png, gif, webp allowed",
+		})
+		return
+	}
+
+	// 3. Validasi ukuran file (max 5MB)
+	maxSize := int64(5 * 1024 * 1024) // 5MB
+	if file.Size > maxSize {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "File size too large. Maximum 5MB allowed",
+		})
+		return
+	}
+
+	// 4. Buat folder upload kalau belum ada
+	uploadPath := "uploads/"
+	if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to create upload directory",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// 5. Generate nama file unik
+	filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+	filePath := uploadPath + filename
+
+	// 6. Cek apakah file sudah ada
+	if _, err := os.Stat(filePath); err == nil {
+		randomSuffix := fmt.Sprintf("_%d", time.Now().UnixNano())
+		filenameWithoutExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+		filename = fmt.Sprintf("%s%s%s", filenameWithoutExt, randomSuffix, ext)
+		filePath = uploadPath + filename
+	}
+
+	// 7. Simpan file
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to save file",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// 8. Ambil field dari form
 	title := c.PostForm("title")
 	description := c.PostForm("description")
-	url := c.PostForm("url")
 	date := c.PostForm("date")
 	isActive := c.PostForm("is_active")
 
-	// Validasi field wajib
+	// 9. Validasi field wajib
 	if title == "" {
+		os.Remove(filePath)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Title is required",
 		})
 		return
 	}
 
-	if url == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "URL is required",
-		})
-		return
-	}
-
 	if date == "" {
+		os.Remove(filePath)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Date is required",
 		})
 		return
 	}
 
-	// Parse date (format: YYYY-MM-DD)
+	// 10. Parse date
 	dateTime, err := time.Parse("2006-01-02", date)
 	if err != nil {
+		os.Remove(filePath)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid date format. Use YYYY-MM-DD",
 			"error":   err.Error(),
@@ -61,11 +127,12 @@ func (ctrl *GalleryController) Create(c *gin.Context) {
 		return
 	}
 
-	// Parse is_active (default true jika tidak ada)
+	// 11. Parse is_active (default true)
 	isActiveBool := true
 	if isActive != "" {
 		isActiveBool, err = strconv.ParseBool(isActive)
 		if err != nil {
+			os.Remove(filePath)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "Invalid is_active format",
 				"error":   err.Error(),
@@ -74,16 +141,19 @@ func (ctrl *GalleryController) Create(c *gin.Context) {
 		}
 	}
 
+	// 12. Buat payload
 	payload := models.Gallery{
 		Title:       title,
 		Description: description,
-		URL:         url,
+		URL:         filePath, // Gunakan filePath sebagai URL
 		Date:        dateTime,
 		IsActive:    isActiveBool,
 	}
 
+	// 13. Simpan ke database
 	gallery, err := ctrl.galleryService.Create(payload)
 	if err != nil {
+		os.Remove(filePath)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed to create gallery",
 			"error":   err.Error(),
@@ -100,7 +170,6 @@ func (ctrl *GalleryController) Create(c *gin.Context) {
 func (ctrl *GalleryController) FindAll(c *gin.Context) {
 	var params utils.PaginationParams
 
-	// Bind query parameters
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -108,7 +177,6 @@ func (ctrl *GalleryController) FindAll(c *gin.Context) {
 		return
 	}
 
-	// Default values
 	if params.Page == 0 {
 		params.Page = 1
 	}
@@ -195,10 +263,76 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 		return
 	}
 
-	// 3. Ambil field dari form
+	// 3. Handle file upload (opsional untuk update)
+	filePath := existingGallery.URL
+	oldFilePath := existingGallery.URL
+	newFileUploaded := false
+
+	file, err := c.FormFile("file")
+	if err == nil { // Ada file baru
+		// Validasi tipe file
+		allowedExtensions := map[string]bool{
+			".jpg":  true,
+			".jpeg": true,
+			".png":  true,
+			".gif":  true,
+			".webp": true,
+		}
+
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if !allowedExtensions[ext] {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid file type. Only jpg, jpeg, png, gif, webp allowed",
+			})
+			return
+		}
+
+		// Validasi ukuran file
+		maxSize := int64(5 * 1024 * 1024) // 5MB
+		if file.Size > maxSize {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "File size too large. Maximum 5MB allowed",
+			})
+			return
+		}
+
+		uploadPath := "uploads/"
+		if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to create upload directory",
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		// Nama file baru
+		filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+		filePath = uploadPath + filename
+
+		// Cek duplikasi
+		if _, err := os.Stat(filePath); err == nil {
+			randomSuffix := fmt.Sprintf("_%d", time.Now().UnixNano())
+			filenameWithoutExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+			filename = fmt.Sprintf("%s%s%s", filenameWithoutExt, randomSuffix, ext)
+			filePath = uploadPath + filename
+		}
+
+		// Simpan file baru
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to save file",
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		newFileUploaded = true
+		fmt.Printf("New file uploaded: %s\n", filePath)
+	}
+
+	// 4. Ambil field dari form
 	title := c.PostForm("title")
 	description := c.PostForm("description")
-	url := c.PostForm("url")
 	date := c.PostForm("date")
 	isActive := c.PostForm("is_active")
 
@@ -209,15 +343,16 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 	if description == "" {
 		description = existingGallery.Description
 	}
-	if url == "" {
-		url = existingGallery.URL
-	}
 
 	// Parse date
 	dateTime := existingGallery.Date
 	if date != "" {
 		dateTime, err = time.Parse("2006-01-02", date)
 		if err != nil {
+			// Rollback file baru jika ada
+			if newFileUploaded {
+				os.Remove(filePath)
+			}
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "Invalid date format. Use YYYY-MM-DD",
 				"error":   err.Error(),
@@ -231,6 +366,10 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 	if isActive != "" {
 		isActiveBool, err = strconv.ParseBool(isActive)
 		if err != nil {
+			// Rollback file baru jika ada
+			if newFileUploaded {
+				os.Remove(filePath)
+			}
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "Invalid is_active format",
 				"error":   err.Error(),
@@ -239,24 +378,42 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 		}
 	}
 
-	// 4. Buat payload untuk update
+	// 5. Buat payload
 	payload := models.Gallery{
 		ID:          uint(uint64Val),
 		Title:       title,
 		Description: description,
-		URL:         url,
+		URL:         filePath,
 		Date:        dateTime,
 		IsActive:    isActiveBool,
 	}
 
-	// 5. Update ke database
+	// 6. Update ke database
 	data, err := ctrl.galleryService.Update(payload)
 	if err != nil {
+		// Rollback: hapus file baru jika gagal update database
+		if newFileUploaded && filePath != oldFilePath {
+			if removeErr := os.Remove(filePath); removeErr != nil {
+				fmt.Printf("Failed to rollback new file %s: %v\n", filePath, removeErr)
+			} else {
+				fmt.Printf("Rolled back: Deleted new file %s due to database error\n", filePath)
+			}
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed to update gallery",
 			"error":   err.Error(),
 		})
 		return
+	}
+
+	// 7. Hapus file lama jika ada file baru
+	if newFileUploaded && oldFilePath != "" && oldFilePath != filePath {
+		if err := os.Remove(oldFilePath); err != nil {
+			fmt.Printf("Warning: Failed to delete old file %s: %v\n", oldFilePath, err)
+		} else {
+			fmt.Printf("Successfully deleted old file: %s\n", oldFilePath)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -287,7 +444,7 @@ func (ctrl *GalleryController) Delete(c *gin.Context) {
 		return
 	}
 
-	// 3. Soft delete gallery (set is_deleted = true)
+	// 3. Delete dari database
 	err = ctrl.galleryService.Delete(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -295,6 +452,15 @@ func (ctrl *GalleryController) Delete(c *gin.Context) {
 			"error":   err.Error(),
 		})
 		return
+	}
+
+	// 4. Hapus file fisik
+	if existingGallery.URL != "" {
+		if err := os.Remove(existingGallery.URL); err != nil {
+			fmt.Printf("Warning: Failed to delete file %s: %v\n", existingGallery.URL, err)
+		} else {
+			fmt.Printf("Successfully deleted file: %s\n", existingGallery.URL)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
