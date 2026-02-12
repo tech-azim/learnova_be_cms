@@ -14,6 +14,7 @@ func Router(
 	registrationController *controllers.RegistrationController,
 	serviceController *controllers.ServiceController,
 	portfolioController *controllers.PortfolioController,
+	featureController *controllers.FeatureController,
 ) {
 	r.Static("/uploads", "./uploads")
 	api := r.Group("/api/v1")
@@ -71,6 +72,19 @@ func Router(
 			portfolioRoute.GET("/:id", portfolioController.FindByID)
 			portfolioRoute.PUT("/:id", middlewares.AuthMiddleware(), portfolioController.Update)
 			portfolioRoute.DELETE("/:id", middlewares.AuthMiddleware(), portfolioController.Delete)
+		}
+
+		featureRoute := api.Group("/features")
+		{
+			// PUBLIC endpoints
+			featureRoute.GET("", featureController.FindAll)
+			featureRoute.GET("/active", featureController.FindAllActive) // endpoint khusus untuk feature yang aktif
+			featureRoute.GET("/:id", featureController.FindByID)
+
+			// PROTECTED endpoints (perlu authentication)
+			featureRoute.POST("", middlewares.AuthMiddleware(), featureController.Create)
+			featureRoute.PUT("/:id", middlewares.AuthMiddleware(), featureController.Update)
+			featureRoute.DELETE("/:id", middlewares.AuthMiddleware(), featureController.Delete)
 		}
 	}
 }
