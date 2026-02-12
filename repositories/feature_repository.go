@@ -48,7 +48,7 @@ func (r *featureRepository) FindAll(params utils.PaginationParams) ([]models.Fea
 		return nil, 0, err
 	}
 
-	err := query.Order("created_at DESC").Offset(offset).Limit(params.Limit).Find(&features).Error
+	err := query.Order("created_at ASC").Offset(offset).Limit(params.Limit).Find(&features).Error
 
 	return features, total, err
 }
