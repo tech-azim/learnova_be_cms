@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tech-azim/be-learnova/models"
@@ -10,32 +11,26 @@ import (
 	"github.com/tech-azim/be-learnova/utils"
 )
 
-type FeatureController struct {
-	featureService services.FeatureService
+type GalleryController struct {
+	galleryService services.GalleryService
 }
 
-func NewFeatureController(featureService services.FeatureService) *FeatureController {
-	return &FeatureController{
-		featureService: featureService,
+func NewGalleryController(galleryService services.GalleryService) *GalleryController {
+	return &GalleryController{
+		galleryService: galleryService,
 	}
 }
 
-func (ctrl *FeatureController) Create(c *gin.Context) {
+func (ctrl *GalleryController) Create(c *gin.Context) {
 	// Ambil field dari form
-	icon := c.PostForm("icon")
 	title := c.PostForm("title")
 	description := c.PostForm("description")
+	url := c.PostForm("url")
+	date := c.PostForm("date")
 	order := c.PostForm("order")
 	isActive := c.PostForm("is_active")
 
 	// Validasi field wajib
-	if icon == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Icon is required",
-		})
-		return
-	}
-
 	if title == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Title is required",
@@ -43,9 +38,26 @@ func (ctrl *FeatureController) Create(c *gin.Context) {
 		return
 	}
 
-	if description == "" {
+	if url == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Description is required",
+			"message": "URL is required",
+		})
+		return
+	}
+
+	if date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Date is required",
+		})
+		return
+	}
+
+	// Parse date (format: YYYY-MM-DD)
+	dateTime, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid date format. Use YYYY-MM-DD",
+			"error":   err.Error(),
 		})
 		return
 	}
@@ -53,7 +65,6 @@ func (ctrl *FeatureController) Create(c *gin.Context) {
 	// Parse order (default 0 jika tidak ada)
 	orderInt := 0
 	if order != "" {
-		var err error
 		orderInt, err = strconv.Atoi(order)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -67,7 +78,6 @@ func (ctrl *FeatureController) Create(c *gin.Context) {
 	// Parse is_active (default true jika tidak ada)
 	isActiveBool := true
 	if isActive != "" {
-		var err error
 		isActiveBool, err = strconv.ParseBool(isActive)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -78,30 +88,31 @@ func (ctrl *FeatureController) Create(c *gin.Context) {
 		}
 	}
 
-	payload := models.Feature{
-		Icon:        icon,
+	payload := models.Gallery{
 		Title:       title,
 		Description: description,
-		SortOrder:   orderInt,
+		URL:         url,
+		Date:        dateTime,
+		Order:       orderInt,
 		IsActive:    isActiveBool,
 	}
 
-	feature, err := ctrl.featureService.Create(payload)
+	gallery, err := ctrl.galleryService.Create(payload)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed to create feature",
+			"message": "Failed to create gallery",
 			"error":   err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"data":    feature,
-		"message": "Feature created successfully",
+		"data":    gallery,
+		"message": "Gallery created successfully",
 	})
 }
 
-func (ctrl *FeatureController) FindAll(c *gin.Context) {
+func (ctrl *GalleryController) FindAll(c *gin.Context) {
 	var params utils.PaginationParams
 
 	// Bind query parameters
@@ -120,10 +131,10 @@ func (ctrl *FeatureController) FindAll(c *gin.Context) {
 		params.Limit = 10
 	}
 
-	data, total, err := ctrl.featureService.FindAll(params)
+	data, total, err := ctrl.galleryService.FindAll(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch features",
+			"error": "Failed to fetch galleries",
 		})
 		return
 	}
@@ -138,11 +149,11 @@ func (ctrl *FeatureController) FindAll(c *gin.Context) {
 	})
 }
 
-func (ctrl *FeatureController) FindAllActive(c *gin.Context) {
-	data, err := ctrl.featureService.FindAllActive()
+func (ctrl *GalleryController) FindAllActive(c *gin.Context) {
+	data, err := ctrl.galleryService.FindAllActive()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch active features",
+			"error": "Failed to fetch active galleries",
 		})
 		return
 	}
@@ -152,7 +163,7 @@ func (ctrl *FeatureController) FindAllActive(c *gin.Context) {
 	})
 }
 
-func (ctrl *FeatureController) FindByID(c *gin.Context) {
+func (ctrl *GalleryController) FindByID(c *gin.Context) {
 	id := c.Param("id")
 	uint64Val, err := strconv.ParseUint(id, 10, 0)
 	if err != nil {
@@ -163,10 +174,10 @@ func (ctrl *FeatureController) FindByID(c *gin.Context) {
 		return
 	}
 
-	data, err := ctrl.featureService.FindByID(uint(uint64Val))
+	data, err := ctrl.galleryService.FindByID(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Feature not found",
+			"message": "Gallery not found",
 			"error":   err.Error(),
 		})
 		return
@@ -177,7 +188,7 @@ func (ctrl *FeatureController) FindByID(c *gin.Context) {
 	})
 }
 
-func (ctrl *FeatureController) Update(c *gin.Context) {
+func (ctrl *GalleryController) Update(c *gin.Context) {
 	// 1. Ambil ID dari URL parameter
 	id := c.Param("id")
 	uint64Val, err := strconv.ParseUint(id, 10, 0)
@@ -189,36 +200,50 @@ func (ctrl *FeatureController) Update(c *gin.Context) {
 		return
 	}
 
-	// 2. Cek apakah feature exist
-	existingFeature, err := ctrl.featureService.FindByID(uint(uint64Val))
+	// 2. Cek apakah gallery exist
+	existingGallery, err := ctrl.galleryService.FindByID(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Feature not found",
+			"message": "Gallery not found",
 			"error":   err.Error(),
 		})
 		return
 	}
 
 	// 3. Ambil field dari form
-	icon := c.PostForm("icon")
 	title := c.PostForm("title")
 	description := c.PostForm("description")
+	url := c.PostForm("url")
+	date := c.PostForm("date")
 	order := c.PostForm("order")
 	isActive := c.PostForm("is_active")
 
 	// Gunakan nilai lama jika tidak ada input baru
-	if icon == "" {
-		icon = existingFeature.Icon
-	}
 	if title == "" {
-		title = existingFeature.Title
+		title = existingGallery.Title
 	}
 	if description == "" {
-		description = existingFeature.Description
+		description = existingGallery.Description
+	}
+	if url == "" {
+		url = existingGallery.URL
+	}
+
+	// Parse date
+	dateTime := existingGallery.Date
+	if date != "" {
+		dateTime, err = time.Parse("2006-01-02", date)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid date format. Use YYYY-MM-DD",
+				"error":   err.Error(),
+			})
+			return
+		}
 	}
 
 	// Parse order
-	orderInt := existingFeature.SortOrder
+	orderInt := existingGallery.Order
 	if order != "" {
 		orderInt, err = strconv.Atoi(order)
 		if err != nil {
@@ -231,7 +256,7 @@ func (ctrl *FeatureController) Update(c *gin.Context) {
 	}
 
 	// Parse is_active
-	isActiveBool := existingFeature.IsActive
+	isActiveBool := existingGallery.IsActive
 	if isActive != "" {
 		isActiveBool, err = strconv.ParseBool(isActive)
 		if err != nil {
@@ -244,20 +269,21 @@ func (ctrl *FeatureController) Update(c *gin.Context) {
 	}
 
 	// 4. Buat payload untuk update
-	payload := models.Feature{
+	payload := models.Gallery{
 		ID:          uint(uint64Val),
-		Icon:        icon,
 		Title:       title,
 		Description: description,
-		SortOrder:   orderInt,
+		URL:         url,
+		Date:        dateTime,
+		Order:       orderInt,
 		IsActive:    isActiveBool,
 	}
 
 	// 5. Update ke database
-	data, err := ctrl.featureService.Update(payload)
+	data, err := ctrl.galleryService.Update(payload)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed to update feature",
+			"message": "Failed to update gallery",
 			"error":   err.Error(),
 		})
 		return
@@ -265,11 +291,11 @@ func (ctrl *FeatureController) Update(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data":    data,
-		"message": "Feature updated successfully",
+		"message": "Gallery updated successfully",
 	})
 }
 
-func (ctrl *FeatureController) Delete(c *gin.Context) {
+func (ctrl *GalleryController) Delete(c *gin.Context) {
 	// 1. Ambil ID dari URL parameter
 	id := c.Param("id")
 	uint64Val, err := strconv.ParseUint(id, 10, 0)
@@ -281,31 +307,31 @@ func (ctrl *FeatureController) Delete(c *gin.Context) {
 		return
 	}
 
-	// 2. Cek apakah feature exist
-	existingFeature, err := ctrl.featureService.FindByID(uint(uint64Val))
+	// 2. Cek apakah gallery exist
+	existingGallery, err := ctrl.galleryService.FindByID(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Feature not found",
+			"message": "Gallery not found",
 			"error":   err.Error(),
 		})
 		return
 	}
 
-	// 3. Soft delete feature (set is_deleted = true)
-	err = ctrl.featureService.Delete(uint(uint64Val))
+	// 3. Soft delete gallery (set is_deleted = true)
+	err = ctrl.galleryService.Delete(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed to delete feature",
+			"message": "Failed to delete gallery",
 			"error":   err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Feature deleted successfully",
+		"message": "Gallery deleted successfully",
 		"data": gin.H{
-			"id":    existingFeature.ID,
-			"title": existingFeature.Title,
+			"id":    existingGallery.ID,
+			"title": existingGallery.Title,
 		},
 	})
 }
