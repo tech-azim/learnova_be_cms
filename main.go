@@ -75,6 +75,9 @@ func main() {
 	serviceRepo := repositories.NewServiceRepository(config.DB)
 	portolioRepo := repositories.NewPortfolioRepository(config.DB)
 	featureRepo := repositories.NewFeatureRepository(config.DB)
+	galleryRepo := repositories.NewGalleryRepository(config.DB)
+	videoGalleryRepo := repositories.NewVideoGalleryRepository(config.DB)
+	flyerGalleryRepo := repositories.NewFlyerGalleryRepository(config.DB)
 
 	// Initialize Services
 	authService := services.NewAuthService(userRepo)
@@ -84,6 +87,9 @@ func main() {
 	serviceService := services.NewServiceService(serviceRepo)
 	portfolioService := services.NewPortfolioService(portolioRepo)
 	featureService := services.NewFeatureService(featureRepo)
+	galleryService := services.NewGalleryService(galleryRepo)
+	videoGalleryService := services.NewVideoGalleryService(videoGalleryRepo)
+	flyerGalleryService := services.NewFlyerGalleryService(flyerGalleryRepo)
 
 	// Initialize Controllers
 	authController := controllers.NewAuthController(authService)
@@ -93,9 +99,24 @@ func main() {
 	serviceController := controllers.NewServiceController(serviceService)
 	portfolioController := controllers.NewPortfolioController(portfolioService)
 	featureController := controllers.NewFeatureController(featureService)
+	galleryController := controllers.NewGalleryController(galleryService)
+	videoGalleryController := controllers.NewVideoGalleryController(videoGalleryService)
+	flyerGalleryController := controllers.NewFlyerGalleryController(flyerGalleryService)
 
 	// Routes dipanggil SETELAH semua middleware global
-	routes.Router(r, authController, heroController, programController, registrationController, serviceController, portfolioController, featureController)
+	routes.Router(
+		r,
+		authController,
+		heroController,
+		programController,
+		registrationController,
+		serviceController,
+		portfolioController,
+		featureController,
+		galleryController,
+		videoGalleryController,
+		flyerGalleryController,
+	)
 
 	for _, route := range r.Routes() {
 		fmt.Printf("Method: %s | Path: %s\n", route.Method, route.Path)

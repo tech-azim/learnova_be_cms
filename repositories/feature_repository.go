@@ -12,7 +12,7 @@ type FeatureRepository interface {
 	Create(feature models.Feature) (models.Feature, error)
 	Update(feature models.Feature) (models.Feature, error)
 	Delete(id uint) error
-	FindAllActive() ([]models.Feature, error) // tambahan untuk get semua feature yang aktif
+	FindAllActive() ([]models.Feature, error)
 }
 
 type featureRepository struct {
@@ -48,7 +48,7 @@ func (r *featureRepository) FindAll(params utils.PaginationParams) ([]models.Fea
 		return nil, 0, err
 	}
 
-	err := query.Offset(offset).Limit(params.Limit).Find(&features).Error
+	err := query.Order("created_at DESC").Offset(offset).Limit(params.Limit).Find(&features).Error
 
 	return features, total, err
 }
@@ -74,7 +74,7 @@ func (r *featureRepository) FindAllActive() ([]models.Feature, error) {
 	var features []models.Feature
 
 	err := r.db.Where("is_deleted = ? AND is_active = ?", false, true).
-		Order("order ASC").
+		Order("created_at DESC").
 		Find(&features).Error
 
 	return features, err

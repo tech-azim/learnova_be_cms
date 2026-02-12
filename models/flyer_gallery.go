@@ -6,12 +6,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type Gallery struct {
+type FlyerGallery struct {
 	ID          uint           `gorm:"primaryKey;autoIncrement" json:"id"`
 	Title       string         `gorm:"type:varchar(255);not null" json:"title"`
+	Image       string         `gorm:"type:varchar(500);not null" json:"image"`
 	Description string         `gorm:"type:text" json:"description"`
-	URL         string         `gorm:"type:varchar(500);not null" json:"url"`
-	Date        time.Time      `gorm:"type:date;not null" json:"date"`
 	IsActive    bool           `gorm:"default:true" json:"is_active"`
 	IsDeleted   bool           `gorm:"default:false" json:"is_deleted"`
 	CreatedAt   time.Time      `json:"created_at"`

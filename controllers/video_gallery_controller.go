@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/tech-azim/be-learnova/models"
 	"github.com/tech-azim/be-learnova/services"
 	"github.com/tech-azim/be-learnova/utils"
@@ -25,31 +28,14 @@ func (ctrl *VideoGalleryController) Create(c *gin.Context) {
 	// Ambil field dari form
 	title := c.PostForm("title")
 	description := c.PostForm("description")
-	thumbnail := c.PostForm("thumbnail")
-	videoURL := c.PostForm("video_url")
 	category := c.PostForm("category")
 	date := c.PostForm("date")
-	order := c.PostForm("order")
 	isActive := c.PostForm("is_active")
 
 	// Validasi field wajib
 	if title == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Title is required",
-		})
-		return
-	}
-
-	if thumbnail == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Thumbnail is required",
-		})
-		return
-	}
-
-	if videoURL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Video URL is required",
 		})
 		return
 	}
@@ -78,17 +64,52 @@ func (ctrl *VideoGalleryController) Create(c *gin.Context) {
 		return
 	}
 
-	// Parse order (default 0 jika tidak ada)
-	orderInt := 0
-	if order != "" {
-		orderInt, err = strconv.Atoi(order)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid order format",
-				"error":   err.Error(),
-			})
-			return
-		}
+	// Upload thumbnail
+	thumbnailFile, err := c.FormFile("thumbnail")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Thumbnail is required",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Generate unique filename untuk thumbnail
+	thumbnailExt := filepath.Ext(thumbnailFile.Filename)
+	thumbnailName := fmt.Sprintf("%s%s", uuid.New().String(), thumbnailExt)
+	thumbnailPath := filepath.Join("uploads", "thumbnails", thumbnailName)
+
+	// Simpan thumbnail
+	if err := c.SaveUploadedFile(thumbnailFile, thumbnailPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to save thumbnail",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Upload video
+	videoFile, err := c.FormFile("video")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Video is required",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Generate unique filename untuk video
+	videoExt := filepath.Ext(videoFile.Filename)
+	videoName := fmt.Sprintf("%s%s", uuid.New().String(), videoExt)
+	videoPath := filepath.Join("uploads", "videos", videoName)
+
+	// Simpan video
+	if err := c.SaveUploadedFile(videoFile, videoPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to save video",
+			"error":   err.Error(),
+		})
+		return
 	}
 
 	// Parse is_active (default true jika tidak ada)
@@ -107,11 +128,10 @@ func (ctrl *VideoGalleryController) Create(c *gin.Context) {
 	payload := models.VideoGallery{
 		Title:       title,
 		Description: description,
-		Thumbnail:   thumbnail,
-		VideoURL:    videoURL,
+		Thumbnail:   "/" + thumbnailPath,
+		VideoURL:    "/" + videoPath,
 		Category:    category,
 		Date:        dateTime,
-		Order:       orderInt,
 		IsActive:    isActiveBool,
 	}
 
@@ -183,7 +203,7 @@ func (ctrl *VideoGalleryController) FindAllActive(c *gin.Context) {
 
 func (ctrl *VideoGalleryController) FindByCategory(c *gin.Context) {
 	category := c.Query("category")
-	
+
 	var params utils.PaginationParams
 
 	// Bind query parameters
@@ -285,11 +305,8 @@ func (ctrl *VideoGalleryController) Update(c *gin.Context) {
 	// 3. Ambil field dari form
 	title := c.PostForm("title")
 	description := c.PostForm("description")
-	thumbnail := c.PostForm("thumbnail")
-	videoURL := c.PostForm("video_url")
 	category := c.PostForm("category")
 	date := c.PostForm("date")
-	order := c.PostForm("order")
 	isActive := c.PostForm("is_active")
 
 	// Gunakan nilai lama jika tidak ada input baru
@@ -299,14 +316,50 @@ func (ctrl *VideoGalleryController) Update(c *gin.Context) {
 	if description == "" {
 		description = existingVideoGallery.Description
 	}
-	if thumbnail == "" {
-		thumbnail = existingVideoGallery.Thumbnail
-	}
-	if videoURL == "" {
-		videoURL = existingVideoGallery.VideoURL
-	}
 	if category == "" {
 		category = existingVideoGallery.Category
+	}
+
+	// Default thumbnail dan video URL dari data lama
+	thumbnailURL := existingVideoGallery.Thumbnail
+	videoURL := existingVideoGallery.VideoURL
+
+	// Upload thumbnail baru jika ada
+	thumbnailFile, err := c.FormFile("thumbnail")
+	if err == nil {
+		// Generate unique filename untuk thumbnail
+		thumbnailExt := filepath.Ext(thumbnailFile.Filename)
+		thumbnailName := fmt.Sprintf("%s%s", uuid.New().String(), thumbnailExt)
+		thumbnailPath := filepath.Join("uploads", "thumbnails", thumbnailName)
+
+		// Simpan thumbnail
+		if err := c.SaveUploadedFile(thumbnailFile, thumbnailPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to save thumbnail",
+				"error":   err.Error(),
+			})
+			return
+		}
+		thumbnailURL = "/" + thumbnailPath
+	}
+
+	// Upload video baru jika ada
+	videoFile, err := c.FormFile("video")
+	if err == nil {
+		// Generate unique filename untuk video
+		videoExt := filepath.Ext(videoFile.Filename)
+		videoName := fmt.Sprintf("%s%s", uuid.New().String(), videoExt)
+		videoPath := filepath.Join("uploads", "videos", videoName)
+
+		// Simpan video
+		if err := c.SaveUploadedFile(videoFile, videoPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to save video",
+				"error":   err.Error(),
+			})
+			return
+		}
+		videoURL = "/" + videoPath
 	}
 
 	// Parse date
@@ -316,19 +369,6 @@ func (ctrl *VideoGalleryController) Update(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "Invalid date format. Use YYYY-MM-DD",
-				"error":   err.Error(),
-			})
-			return
-		}
-	}
-
-	// Parse order
-	orderInt := existingVideoGallery.Order
-	if order != "" {
-		orderInt, err = strconv.Atoi(order)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid order format",
 				"error":   err.Error(),
 			})
 			return
@@ -353,11 +393,10 @@ func (ctrl *VideoGalleryController) Update(c *gin.Context) {
 		ID:          uint(uint64Val),
 		Title:       title,
 		Description: description,
-		Thumbnail:   thumbnail,
+		Thumbnail:   thumbnailURL,
 		VideoURL:    videoURL,
 		Category:    category,
 		Date:        dateTime,
-		Order:       orderInt,
 		IsActive:    isActiveBool,
 	}
 

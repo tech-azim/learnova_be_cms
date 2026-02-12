@@ -14,7 +14,6 @@ type VideoGallery struct {
 	VideoURL    string         `gorm:"type:varchar(500);not null" json:"video_url"`
 	Category    string         `gorm:"type:varchar(100);not null" json:"category"`
 	Date        time.Time      `gorm:"type:date;not null" json:"date"`
-	Order       int            `gorm:"type:int;default:0" json:"order"`
 	IsActive    bool           `gorm:"default:true" json:"is_active"`
 	IsDeleted   bool           `gorm:"default:false" json:"is_deleted"`
 	CreatedAt   time.Time      `json:"created_at"`

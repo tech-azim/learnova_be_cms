@@ -48,7 +48,7 @@ func (r *galleryRepository) FindAll(params utils.PaginationParams) ([]models.Gal
 		return nil, 0, err
 	}
 
-	err := query.Order("order ASC, date DESC").Offset(offset).Limit(params.Limit).Find(&galleries).Error
+	err := query.Order("date DESC").Offset(offset).Limit(params.Limit).Find(&galleries).Error
 
 	return galleries, total, err
 }
@@ -74,7 +74,7 @@ func (r *galleryRepository) FindAllActive() ([]models.Gallery, error) {
 	var galleries []models.Gallery
 
 	err := r.db.Where("is_deleted = ? AND is_active = ?", false, true).
-		Order("order ASC, date DESC").
+		Order("date DESC").
 		Find(&galleries).Error
 
 	return galleries, err

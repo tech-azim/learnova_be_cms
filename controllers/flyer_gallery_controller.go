@@ -3,7 +3,6 @@ package controllers
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tech-azim/be-learnova/models"
@@ -11,22 +10,21 @@ import (
 	"github.com/tech-azim/be-learnova/utils"
 )
 
-type GalleryController struct {
-	galleryService services.GalleryService
+type FlyerGalleryController struct {
+	flyerGalleryService services.FlyerGalleryService
 }
 
-func NewGalleryController(galleryService services.GalleryService) *GalleryController {
-	return &GalleryController{
-		galleryService: galleryService,
+func NewFlyerGalleryController(flyerGalleryService services.FlyerGalleryService) *FlyerGalleryController {
+	return &FlyerGalleryController{
+		flyerGalleryService: flyerGalleryService,
 	}
 }
 
-func (ctrl *GalleryController) Create(c *gin.Context) {
+func (ctrl *FlyerGalleryController) Create(c *gin.Context) {
 	// Ambil field dari form
 	title := c.PostForm("title")
+	image := c.PostForm("image")
 	description := c.PostForm("description")
-	url := c.PostForm("url")
-	date := c.PostForm("date")
 	isActive := c.PostForm("is_active")
 
 	// Validasi field wajib
@@ -37,26 +35,9 @@ func (ctrl *GalleryController) Create(c *gin.Context) {
 		return
 	}
 
-	if url == "" {
+	if image == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "URL is required",
-		})
-		return
-	}
-
-	if date == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Date is required",
-		})
-		return
-	}
-
-	// Parse date (format: YYYY-MM-DD)
-	dateTime, err := time.Parse("2006-01-02", date)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid date format. Use YYYY-MM-DD",
-			"error":   err.Error(),
+			"message": "Image is required",
 		})
 		return
 	}
@@ -64,6 +45,7 @@ func (ctrl *GalleryController) Create(c *gin.Context) {
 	// Parse is_active (default true jika tidak ada)
 	isActiveBool := true
 	if isActive != "" {
+		var err error
 		isActiveBool, err = strconv.ParseBool(isActive)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -74,30 +56,29 @@ func (ctrl *GalleryController) Create(c *gin.Context) {
 		}
 	}
 
-	payload := models.Gallery{
+	payload := models.FlyerGallery{
 		Title:       title,
+		Image:       image,
 		Description: description,
-		URL:         url,
-		Date:        dateTime,
 		IsActive:    isActiveBool,
 	}
 
-	gallery, err := ctrl.galleryService.Create(payload)
+	flyerGallery, err := ctrl.flyerGalleryService.Create(payload)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed to create gallery",
+			"message": "Failed to create flyer gallery",
 			"error":   err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"data":    gallery,
-		"message": "Gallery created successfully",
+		"data":    flyerGallery,
+		"message": "Flyer gallery created successfully",
 	})
 }
 
-func (ctrl *GalleryController) FindAll(c *gin.Context) {
+func (ctrl *FlyerGalleryController) FindAll(c *gin.Context) {
 	var params utils.PaginationParams
 
 	// Bind query parameters
@@ -116,10 +97,10 @@ func (ctrl *GalleryController) FindAll(c *gin.Context) {
 		params.Limit = 10
 	}
 
-	data, total, err := ctrl.galleryService.FindAll(params)
+	data, total, err := ctrl.flyerGalleryService.FindAll(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch galleries",
+			"error": "Failed to fetch flyer galleries",
 		})
 		return
 	}
@@ -134,11 +115,11 @@ func (ctrl *GalleryController) FindAll(c *gin.Context) {
 	})
 }
 
-func (ctrl *GalleryController) FindAllActive(c *gin.Context) {
-	data, err := ctrl.galleryService.FindAllActive()
+func (ctrl *FlyerGalleryController) FindAllActive(c *gin.Context) {
+	data, err := ctrl.flyerGalleryService.FindAllActive()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch active galleries",
+			"error": "Failed to fetch active flyer galleries",
 		})
 		return
 	}
@@ -148,7 +129,7 @@ func (ctrl *GalleryController) FindAllActive(c *gin.Context) {
 	})
 }
 
-func (ctrl *GalleryController) FindByID(c *gin.Context) {
+func (ctrl *FlyerGalleryController) FindByID(c *gin.Context) {
 	id := c.Param("id")
 	uint64Val, err := strconv.ParseUint(id, 10, 0)
 	if err != nil {
@@ -159,10 +140,10 @@ func (ctrl *GalleryController) FindByID(c *gin.Context) {
 		return
 	}
 
-	data, err := ctrl.galleryService.FindByID(uint(uint64Val))
+	data, err := ctrl.flyerGalleryService.FindByID(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Gallery not found",
+			"message": "Flyer gallery not found",
 			"error":   err.Error(),
 		})
 		return
@@ -173,7 +154,7 @@ func (ctrl *GalleryController) FindByID(c *gin.Context) {
 	})
 }
 
-func (ctrl *GalleryController) Update(c *gin.Context) {
+func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 	// 1. Ambil ID dari URL parameter
 	id := c.Param("id")
 	uint64Val, err := strconv.ParseUint(id, 10, 0)
@@ -185,11 +166,11 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 		return
 	}
 
-	// 2. Cek apakah gallery exist
-	existingGallery, err := ctrl.galleryService.FindByID(uint(uint64Val))
+	// 2. Cek apakah flyer gallery exist
+	existingFlyerGallery, err := ctrl.flyerGalleryService.FindByID(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Gallery not found",
+			"message": "Flyer gallery not found",
 			"error":   err.Error(),
 		})
 		return
@@ -197,37 +178,23 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 
 	// 3. Ambil field dari form
 	title := c.PostForm("title")
+	image := c.PostForm("image")
 	description := c.PostForm("description")
-	url := c.PostForm("url")
-	date := c.PostForm("date")
 	isActive := c.PostForm("is_active")
 
 	// Gunakan nilai lama jika tidak ada input baru
 	if title == "" {
-		title = existingGallery.Title
+		title = existingFlyerGallery.Title
+	}
+	if image == "" {
+		image = existingFlyerGallery.Image
 	}
 	if description == "" {
-		description = existingGallery.Description
-	}
-	if url == "" {
-		url = existingGallery.URL
-	}
-
-	// Parse date
-	dateTime := existingGallery.Date
-	if date != "" {
-		dateTime, err = time.Parse("2006-01-02", date)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid date format. Use YYYY-MM-DD",
-				"error":   err.Error(),
-			})
-			return
-		}
+		description = existingFlyerGallery.Description
 	}
 
 	// Parse is_active
-	isActiveBool := existingGallery.IsActive
+	isActiveBool := existingFlyerGallery.IsActive
 	if isActive != "" {
 		isActiveBool, err = strconv.ParseBool(isActive)
 		if err != nil {
@@ -240,20 +207,19 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 	}
 
 	// 4. Buat payload untuk update
-	payload := models.Gallery{
+	payload := models.FlyerGallery{
 		ID:          uint(uint64Val),
 		Title:       title,
+		Image:       image,
 		Description: description,
-		URL:         url,
-		Date:        dateTime,
 		IsActive:    isActiveBool,
 	}
 
 	// 5. Update ke database
-	data, err := ctrl.galleryService.Update(payload)
+	data, err := ctrl.flyerGalleryService.Update(payload)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed to update gallery",
+			"message": "Failed to update flyer gallery",
 			"error":   err.Error(),
 		})
 		return
@@ -261,11 +227,11 @@ func (ctrl *GalleryController) Update(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data":    data,
-		"message": "Gallery updated successfully",
+		"message": "Flyer gallery updated successfully",
 	})
 }
 
-func (ctrl *GalleryController) Delete(c *gin.Context) {
+func (ctrl *FlyerGalleryController) Delete(c *gin.Context) {
 	// 1. Ambil ID dari URL parameter
 	id := c.Param("id")
 	uint64Val, err := strconv.ParseUint(id, 10, 0)
@@ -277,31 +243,31 @@ func (ctrl *GalleryController) Delete(c *gin.Context) {
 		return
 	}
 
-	// 2. Cek apakah gallery exist
-	existingGallery, err := ctrl.galleryService.FindByID(uint(uint64Val))
+	// 2. Cek apakah flyer gallery exist
+	existingFlyerGallery, err := ctrl.flyerGalleryService.FindByID(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Gallery not found",
+			"message": "Flyer gallery not found",
 			"error":   err.Error(),
 		})
 		return
 	}
 
-	// 3. Soft delete gallery (set is_deleted = true)
-	err = ctrl.galleryService.Delete(uint(uint64Val))
+	// 3. Soft delete flyer gallery (set is_deleted = true)
+	err = ctrl.flyerGalleryService.Delete(uint(uint64Val))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed to delete gallery",
+			"message": "Failed to delete flyer gallery",
 			"error":   err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Gallery deleted successfully",
+		"message": "Flyer gallery deleted successfully",
 		"data": gin.H{
-			"id":    existingGallery.ID,
-			"title": existingGallery.Title,
+			"id":    existingFlyerGallery.ID,
+			"title": existingFlyerGallery.Title,
 		},
 	})
 }

@@ -15,6 +15,9 @@ func Router(
 	serviceController *controllers.ServiceController,
 	portfolioController *controllers.PortfolioController,
 	featureController *controllers.FeatureController,
+	galleryController *controllers.GalleryController,
+	videoGalleryController *controllers.VideoGalleryController,
+	flyerGalleryController *controllers.FlyerGalleryController,
 ) {
 	r.Static("/uploads", "./uploads")
 	api := r.Group("/api/v1")
@@ -78,13 +81,54 @@ func Router(
 		{
 			// PUBLIC endpoints
 			featureRoute.GET("", featureController.FindAll)
-			featureRoute.GET("/active", featureController.FindAllActive) // endpoint khusus untuk feature yang aktif
+			featureRoute.GET("/active", featureController.FindAllActive)
 			featureRoute.GET("/:id", featureController.FindByID)
 
 			// PROTECTED endpoints (perlu authentication)
 			featureRoute.POST("", middlewares.AuthMiddleware(), featureController.Create)
 			featureRoute.PUT("/:id", middlewares.AuthMiddleware(), featureController.Update)
 			featureRoute.DELETE("/:id", middlewares.AuthMiddleware(), featureController.Delete)
+		}
+
+		galleryRoute := api.Group("/galleries")
+		{
+			// PUBLIC endpoints
+			galleryRoute.GET("", galleryController.FindAll)
+			galleryRoute.GET("/active", galleryController.FindAllActive)
+			galleryRoute.GET("/:id", galleryController.FindByID)
+
+			// PROTECTED endpoints (perlu authentication)
+			galleryRoute.POST("", middlewares.AuthMiddleware(), galleryController.Create)
+			galleryRoute.PUT("/:id", middlewares.AuthMiddleware(), galleryController.Update)
+			galleryRoute.DELETE("/:id", middlewares.AuthMiddleware(), galleryController.Delete)
+		}
+
+		videoGalleryRoute := api.Group("/video-galleries")
+		{
+			// PUBLIC endpoints
+			videoGalleryRoute.GET("", videoGalleryController.FindAll)
+			videoGalleryRoute.GET("/active", videoGalleryController.FindAllActive)
+			videoGalleryRoute.GET("/categories", videoGalleryController.FindAllCategories)
+			videoGalleryRoute.GET("/by-category", videoGalleryController.FindByCategory) // ?category=Semua&page=1&limit=10
+			videoGalleryRoute.GET("/:id", videoGalleryController.FindByID)
+
+			// PROTECTED endpoints (perlu authentication)
+			videoGalleryRoute.POST("", middlewares.AuthMiddleware(), videoGalleryController.Create)
+			videoGalleryRoute.PUT("/:id", middlewares.AuthMiddleware(), videoGalleryController.Update)
+			videoGalleryRoute.DELETE("/:id", middlewares.AuthMiddleware(), videoGalleryController.Delete)
+		}
+
+		flyerGalleryRoute := api.Group("/flyer-galleries")
+		{
+			// PUBLIC endpoints
+			flyerGalleryRoute.GET("", flyerGalleryController.FindAll)
+			flyerGalleryRoute.GET("/active", flyerGalleryController.FindAllActive)
+			flyerGalleryRoute.GET("/:id", flyerGalleryController.FindByID)
+
+			// PROTECTED endpoints (perlu authentication)
+			flyerGalleryRoute.POST("", middlewares.AuthMiddleware(), flyerGalleryController.Create)
+			flyerGalleryRoute.PUT("/:id", middlewares.AuthMiddleware(), flyerGalleryController.Update)
+			flyerGalleryRoute.DELETE("/:id", middlewares.AuthMiddleware(), flyerGalleryController.Delete)
 		}
 	}
 }

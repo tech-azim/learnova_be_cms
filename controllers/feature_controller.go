@@ -25,7 +25,6 @@ func (ctrl *FeatureController) Create(c *gin.Context) {
 	icon := c.PostForm("icon")
 	title := c.PostForm("title")
 	description := c.PostForm("description")
-	order := c.PostForm("order")
 	isActive := c.PostForm("is_active")
 
 	// Validasi field wajib
@@ -50,20 +49,6 @@ func (ctrl *FeatureController) Create(c *gin.Context) {
 		return
 	}
 
-	// Parse order (default 0 jika tidak ada)
-	orderInt := 0
-	if order != "" {
-		var err error
-		orderInt, err = strconv.Atoi(order)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid order format",
-				"error":   err.Error(),
-			})
-			return
-		}
-	}
-
 	// Parse is_active (default true jika tidak ada)
 	isActiveBool := true
 	if isActive != "" {
@@ -82,7 +67,6 @@ func (ctrl *FeatureController) Create(c *gin.Context) {
 		Icon:        icon,
 		Title:       title,
 		Description: description,
-		SortOrder:   orderInt,
 		IsActive:    isActiveBool,
 	}
 
@@ -203,7 +187,6 @@ func (ctrl *FeatureController) Update(c *gin.Context) {
 	icon := c.PostForm("icon")
 	title := c.PostForm("title")
 	description := c.PostForm("description")
-	order := c.PostForm("order")
 	isActive := c.PostForm("is_active")
 
 	// Gunakan nilai lama jika tidak ada input baru
@@ -215,19 +198,6 @@ func (ctrl *FeatureController) Update(c *gin.Context) {
 	}
 	if description == "" {
 		description = existingFeature.Description
-	}
-
-	// Parse order
-	orderInt := existingFeature.SortOrder
-	if order != "" {
-		orderInt, err = strconv.Atoi(order)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid order format",
-				"error":   err.Error(),
-			})
-			return
-		}
 	}
 
 	// Parse is_active
@@ -249,7 +219,6 @@ func (ctrl *FeatureController) Update(c *gin.Context) {
 		Icon:        icon,
 		Title:       title,
 		Description: description,
-		SortOrder:   orderInt,
 		IsActive:    isActiveBool,
 	}
 
