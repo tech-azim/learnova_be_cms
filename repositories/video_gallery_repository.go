@@ -50,7 +50,7 @@ func (r *videoGalleryRepository) FindAll(params utils.PaginationParams) ([]model
 		return nil, 0, err
 	}
 
-	err := query.Order("order ASC, date DESC").Offset(offset).Limit(params.Limit).Find(&videoGalleries).Error
+	err := query.Offset(offset).Limit(params.Limit).Find(&videoGalleries).Error
 
 	return videoGalleries, total, err
 }
