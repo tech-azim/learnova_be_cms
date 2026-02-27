@@ -20,7 +20,6 @@ func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
 
-		// Log untuk debugging
 		fmt.Println("=== CORS Middleware ===")
 		fmt.Println("Origin:", origin)
 		fmt.Println("Method:", c.Request.Method)
@@ -50,13 +49,11 @@ func main() {
 	seedFlag := flag.Bool("seed", false, "Run database seeders")
 	flag.Parse()
 
-	// Buat instance Gin tanpa middleware default
 	r := gin.New()
 
-	// Tambahkan middleware secara manual dengan urutan yang benar:
-	r.Use(gin.Logger())     // 1. Logger
-	r.Use(gin.Recovery())   // 2. Recovery
-	r.Use(CORSMiddleware()) // 3. CORS - HARUS SEBELUM ROUTES!
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	r.Use(CORSMiddleware())
 
 	r.RedirectTrailingSlash = true
 
@@ -78,9 +75,11 @@ func main() {
 	galleryRepo := repositories.NewGalleryRepository(config.DB)
 	videoGalleryRepo := repositories.NewVideoGalleryRepository(config.DB)
 	flyerGalleryRepo := repositories.NewFlyerGalleryRepository(config.DB)
+	dashboardRepo := repositories.NewDashboardRepository(config.DB)
 
 	// Initialize Services
 	authService := services.NewAuthService(userRepo)
+	userService := services.NewUserService(userRepo) // NEW
 	heroService := services.NewHeroService(heroRepo)
 	programService := services.NewProgramService(programRepo)
 	registrationService := services.RegistrationService(registrationRepo)
@@ -90,9 +89,11 @@ func main() {
 	galleryService := services.NewGalleryService(galleryRepo)
 	videoGalleryService := services.NewVideoGalleryService(videoGalleryRepo)
 	flyerGalleryService := services.NewFlyerGalleryService(flyerGalleryRepo)
+	dashboardService := services.NewDashboardService(dashboardRepo)
 
 	// Initialize Controllers
 	authController := controllers.NewAuthController(authService)
+	userController := controllers.NewUserController(userService) // NEW
 	heroController := controllers.NewHeroController(heroService)
 	programController := controllers.NewProgramController(programService)
 	registrationController := controllers.NewRegistrationController(registrationService, programService)
@@ -102,8 +103,8 @@ func main() {
 	galleryController := controllers.NewGalleryController(galleryService)
 	videoGalleryController := controllers.NewVideoGalleryController(videoGalleryService)
 	flyerGalleryController := controllers.NewFlyerGalleryController(flyerGalleryService)
+	dashboardController := controllers.NewDashboardController(dashboardService)
 
-	// Routes dipanggil SETELAH semua middleware global
 	routes.Router(
 		r,
 		authController,
@@ -116,6 +117,8 @@ func main() {
 		galleryController,
 		videoGalleryController,
 		flyerGalleryController,
+		dashboardController,
+		userController,
 	)
 
 	for _, route := range r.Routes() {

@@ -18,13 +18,34 @@ func Router(
 	galleryController *controllers.GalleryController,
 	videoGalleryController *controllers.VideoGalleryController,
 	flyerGalleryController *controllers.FlyerGalleryController,
+	dashboardController *controllers.DashboardController,
+	userController *controllers.UserController,
 ) {
 	r.Static("/uploads", "./uploads")
 	api := r.Group("/api/v1")
+	api.GET("/dashboard", dashboardController.GetDashboard)
 	{
 		authRoute := api.Group("/auth")
 		{
 			authRoute.POST("/login", authController.Login)
+		}
+
+		profileRoute := api.Group("/profile")
+		profileRoute.Use(middlewares.AuthMiddleware())
+		{
+			profileRoute.GET("", userController.GetProfile)    // GET  /api/v1/profile
+			profileRoute.PUT("", userController.UpdateProfile) // PUT  /api/v1/profile
+		}
+
+		// ── USERS (semua protected) ───────────────────────────────────────────
+		userRoute := api.Group("/users")
+		userRoute.Use(middlewares.AuthMiddleware())
+		{
+			userRoute.GET("", userController.GetAllUsers)
+			userRoute.GET("/:id", userController.GetUserByID)
+			userRoute.POST("", userController.CreateUser)
+			userRoute.PUT("/:id", userController.UpdateUser)
+			userRoute.DELETE("/:id", userController.DeleteUser)
 		}
 
 		heroRoute := api.Group("/heros")
@@ -79,12 +100,9 @@ func Router(
 
 		featureRoute := api.Group("/features")
 		{
-			// PUBLIC endpoints
 			featureRoute.GET("", featureController.FindAll)
 			featureRoute.GET("/active", featureController.FindAllActive)
 			featureRoute.GET("/:id", featureController.FindByID)
-
-			// PROTECTED endpoints (perlu authentication)
 			featureRoute.POST("", middlewares.AuthMiddleware(), featureController.Create)
 			featureRoute.PUT("/:id", middlewares.AuthMiddleware(), featureController.Update)
 			featureRoute.DELETE("/:id", middlewares.AuthMiddleware(), featureController.Delete)
@@ -92,12 +110,9 @@ func Router(
 
 		galleryRoute := api.Group("/galleries")
 		{
-			// PUBLIC endpoints
 			galleryRoute.GET("", galleryController.FindAll)
 			galleryRoute.GET("/active", galleryController.FindAllActive)
 			galleryRoute.GET("/:id", galleryController.FindByID)
-
-			// PROTECTED endpoints (perlu authentication)
 			galleryRoute.POST("", middlewares.AuthMiddleware(), galleryController.Create)
 			galleryRoute.PUT("/:id", middlewares.AuthMiddleware(), galleryController.Update)
 			galleryRoute.DELETE("/:id", middlewares.AuthMiddleware(), galleryController.Delete)
@@ -105,14 +120,11 @@ func Router(
 
 		videoGalleryRoute := api.Group("/video-galleries")
 		{
-			// PUBLIC endpoints
 			videoGalleryRoute.GET("", videoGalleryController.FindAll)
 			videoGalleryRoute.GET("/active", videoGalleryController.FindAllActive)
 			videoGalleryRoute.GET("/categories", videoGalleryController.FindAllCategories)
-			videoGalleryRoute.GET("/by-category", videoGalleryController.FindByCategory) // ?category=Semua&page=1&limit=10
+			videoGalleryRoute.GET("/by-category", videoGalleryController.FindByCategory)
 			videoGalleryRoute.GET("/:id", videoGalleryController.FindByID)
-
-			// PROTECTED endpoints (perlu authentication)
 			videoGalleryRoute.POST("", middlewares.AuthMiddleware(), videoGalleryController.Create)
 			videoGalleryRoute.PUT("/:id", middlewares.AuthMiddleware(), videoGalleryController.Update)
 			videoGalleryRoute.DELETE("/:id", middlewares.AuthMiddleware(), videoGalleryController.Delete)
@@ -120,12 +132,9 @@ func Router(
 
 		flyerGalleryRoute := api.Group("/flyer-galleries")
 		{
-			// PUBLIC endpoints
 			flyerGalleryRoute.GET("", flyerGalleryController.FindAll)
 			flyerGalleryRoute.GET("/active", flyerGalleryController.FindAllActive)
 			flyerGalleryRoute.GET("/:id", flyerGalleryController.FindByID)
-
-			// PROTECTED endpoints (perlu authentication)
 			flyerGalleryRoute.POST("", middlewares.AuthMiddleware(), flyerGalleryController.Create)
 			flyerGalleryRoute.PUT("/:id", middlewares.AuthMiddleware(), flyerGalleryController.Update)
 			flyerGalleryRoute.DELETE("/:id", middlewares.AuthMiddleware(), flyerGalleryController.Delete)

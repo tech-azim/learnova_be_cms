@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteRule ^(.*)$ http://127.0.0.1:8080/$1 [P,L]
+```
+
+Lalu akses via:
+```
+http://iix1208.idcloudhost.com/

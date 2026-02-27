@@ -27,7 +27,7 @@ func NewFlyerGalleryController(flyerGalleryService services.FlyerGalleryService)
 
 func (ctrl *FlyerGalleryController) Create(c *gin.Context) {
 	// 1. Ambil file
-	file, err := c.FormFile("file")
+	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "File is required",

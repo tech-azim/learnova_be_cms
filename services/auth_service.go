@@ -21,7 +21,6 @@ type authService struct {
 	userRepo repositories.UserRepository
 }
 
-
 func NewAuthService(userRepo repositories.UserRepository) AuthService {
 	return &authService{
 		userRepo,
@@ -41,13 +40,13 @@ func (a *authService) Login(email string, password string) (string, models.User,
 	}
 
 	claims := middlewares.ClaimStruct{
-	UserID: user.ID,
-	Email:  user.Email,
-	RegisteredClaims: jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-	},
-}
+		UserID: user.ID,
+		Email:  user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -65,4 +64,3 @@ func (a *authService) Login(email string, password string) (string, models.User,
 func (a *authService) Register(user models.User) (models.User, error) {
 	panic("unimplemented")
 }
-

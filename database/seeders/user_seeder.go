@@ -8,15 +8,14 @@ import (
 	"gorm.io/gorm"
 )
 
-
-func SeederUsers(db *gorm.DB){
+func SeederUsers(db *gorm.DB) {
 	users := []models.User{
-      {
-		Email: "admin@learnova.com",
-		Name: "Email",
-		Password: "Password123",
-		Phone: "-",
-	  },
+		{
+			Email:    "admin@learnova.com",
+			Name:     "Email",
+			Password: "Password123",
+			Phone:    "-",
+		},
 	}
 
 	log.Print("running seeders user")
@@ -30,14 +29,14 @@ func SeederUsers(db *gorm.DB){
 			continue
 		}
 		user.Password = hashPassword
-		if err := db.Where("email = ?",user.Email).First(&existingUsers); err != nil {
+		if err := db.Where("email = ?", user.Email).First(&existingUsers); err != nil {
 			if err := db.Create(&user).Error; err != nil {
-				log.Printf("Failed to seed user email = %s,%v", user.Email, err)
-			}else{
-				log.Printf("Success seed email %s", user.Email)
+				log.Printf("Failed to seed user email = %s,%v", user.Password, err)
+			} else {
+				log.Printf("Success seed email %s", user.Password)
 			}
-		}else{
-			log.Printf("User already exist %s",user.Email )
+		} else {
+			log.Printf("User already exist %s", user.Password)
 		}
 	}
 }

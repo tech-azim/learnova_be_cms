@@ -73,12 +73,18 @@ func (r *userRepository) FindByID(id uint) (models.User, error) {
 // Update memperbarui data user yang sudah ada
 // user.ID harus sudah terisi, Save() akan update semua field
 func (r *userRepository) Update(user models.User) (models.User, error) {
-	if user.Password != "" {
+	current, errCurrent := r.FindByEmail(user.Email)
+	if errCurrent != nil {
+		return models.User{}, errCurrent
+	}
+	if user.Password != current.Password {
 		hashedPassword, err := utils.HashPassword(user.Password)
 		if err != nil {
 			return models.User{}, err
 		}
 		user.Password = hashedPassword
+	} else {
+		user.Password = current.Password
 	}
 	err := r.db.Save(&user).Error
 	return user, err
