@@ -40,8 +40,9 @@ func (r *userRepository) FindAll() ([]models.User, error) {
 func (r *userRepository) Create(user models.User) (models.User, error) {
 	hashPassword, errHash := utils.HashPassword(user.Password)
 	if errHash != nil {
-		user.Password = hashPassword
+		return models.User{}, errHash
 	}
+	user.Password = hashPassword
 	err := r.db.Create(&user).Error
 	return user, err
 }
