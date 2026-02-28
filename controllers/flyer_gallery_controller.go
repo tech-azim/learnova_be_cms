@@ -25,6 +25,50 @@ func NewFlyerGalleryController(flyerGalleryService services.FlyerGalleryService)
 	}
 }
 
+// validateImageFile validates file extension and size, returns ext and error message
+func validateImageFile(filename string, size int64) (string, string) {
+	allowedExtensions := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".gif":  true,
+		".webp": true,
+	}
+
+	ext := strings.ToLower(filepath.Ext(filename))
+	if !allowedExtensions[ext] {
+		return "", "Invalid file type. Only jpg, jpeg, png, gif, webp allowed"
+	}
+
+	maxSize := int64(5 * 1024 * 1024) // 5MB
+	if size > maxSize {
+		return "", "File size too large. Maximum 5MB allowed"
+	}
+
+	return ext, ""
+}
+
+// saveUploadedFile saves the uploaded file to uploads/ and returns the file path
+func saveUploadedFile(c *gin.Context, filename string, ext string) (string, error) {
+	uploadPath := "uploads/"
+	if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+		return "", fmt.Errorf("failed to create upload directory: %w", err)
+	}
+
+	generatedName := fmt.Sprintf("%d_%s", time.Now().Unix(), filename)
+	filePath := uploadPath + generatedName
+
+	// Handle duplicate filename
+	if _, err := os.Stat(filePath); err == nil {
+		randomSuffix := fmt.Sprintf("_%d", time.Now().UnixNano())
+		nameWithoutExt := strings.TrimSuffix(generatedName, filepath.Ext(generatedName))
+		generatedName = fmt.Sprintf("%s%s%s", nameWithoutExt, randomSuffix, ext)
+		filePath = uploadPath + generatedName
+	}
+
+	return filePath, nil
+}
+
 func (ctrl *FlyerGalleryController) Create(c *gin.Context) {
 	// 1. Ambil file
 	file, err := c.FormFile("image")
@@ -36,55 +80,23 @@ func (ctrl *FlyerGalleryController) Create(c *gin.Context) {
 		return
 	}
 
-	// 2. Validasi tipe file
-	allowedExtensions := map[string]bool{
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-		".gif":  true,
-		".webp": true,
-	}
-
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if !allowedExtensions[ext] {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid file type. Only jpg, jpeg, png, gif, webp allowed",
-		})
+	// 2. Validasi tipe & ukuran file
+	ext, errMsg := validateImageFile(file.Filename, file.Size)
+	if errMsg != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": errMsg})
 		return
 	}
 
-	// 3. Validasi ukuran file (max 5MB)
-	maxSize := int64(5 * 1024 * 1024) // 5MB
-	if file.Size > maxSize {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "File size too large. Maximum 5MB allowed",
-		})
-		return
-	}
-
-	// 4. Buat folder upload kalau belum ada
-	uploadPath := "uploads/"
-	if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+	// 3. Generate path file
+	filePath, err := saveUploadedFile(c, file.Filename, ext)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Failed to create upload directory",
-			"error":   err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
 
-	// 5. Generate nama file unik
-	filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
-	filePath := uploadPath + filename
-
-	// 6. Cek apakah file sudah ada
-	if _, err := os.Stat(filePath); err == nil {
-		randomSuffix := fmt.Sprintf("_%d", time.Now().UnixNano())
-		filenameWithoutExt := strings.TrimSuffix(filename, filepath.Ext(filename))
-		filename = fmt.Sprintf("%s%s%s", filenameWithoutExt, randomSuffix, ext)
-		filePath = uploadPath + filename
-	}
-
-	// 7. Simpan file
+	// 4. Simpan file
 	if err := c.SaveUploadedFile(file, filePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed to save file",
@@ -93,21 +105,19 @@ func (ctrl *FlyerGalleryController) Create(c *gin.Context) {
 		return
 	}
 
-	// 8. Ambil field dari form
+	// 5. Ambil field dari form
 	title := c.PostForm("title")
 	description := c.PostForm("description")
 	isActive := c.PostForm("is_active")
 
-	// 9. Validasi field wajib
+	// 6. Validasi field wajib
 	if title == "" {
 		os.Remove(filePath)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Title is required",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Title is required"})
 		return
 	}
 
-	// 10. Parse is_active (default true)
+	// 7. Parse is_active (default true)
 	isActiveBool := true
 	if isActive != "" {
 		isActiveBool, err = strconv.ParseBool(isActive)
@@ -121,15 +131,14 @@ func (ctrl *FlyerGalleryController) Create(c *gin.Context) {
 		}
 	}
 
-	// 11. Buat payload
+	// 8. Buat payload & simpan ke database
 	payload := models.FlyerGallery{
 		Title:       title,
-		Image:       filePath, // Gunakan filePath sebagai Image
+		Image:       filePath,
 		Description: description,
 		IsActive:    isActiveBool,
 	}
 
-	// 12. Simpan ke database
 	flyerGallery, err := ctrl.flyerGalleryService.Create(payload)
 	if err != nil {
 		os.Remove(filePath)
@@ -150,9 +159,7 @@ func (ctrl *FlyerGalleryController) FindAll(c *gin.Context) {
 	var params utils.PaginationParams
 
 	if err := c.ShouldBindQuery(&params); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -165,9 +172,7 @@ func (ctrl *FlyerGalleryController) FindAll(c *gin.Context) {
 
 	data, total, err := ctrl.flyerGalleryService.FindAll(params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch flyer galleries",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch flyer galleries"})
 		return
 	}
 
@@ -184,15 +189,11 @@ func (ctrl *FlyerGalleryController) FindAll(c *gin.Context) {
 func (ctrl *FlyerGalleryController) FindAllActive(c *gin.Context) {
 	data, err := ctrl.flyerGalleryService.FindAllActive()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch active flyer galleries",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch active flyer galleries"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": data,
-	})
+	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 func (ctrl *FlyerGalleryController) FindByID(c *gin.Context) {
@@ -215,9 +216,7 @@ func (ctrl *FlyerGalleryController) FindByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": data,
-	})
+	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
@@ -242,62 +241,29 @@ func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 		return
 	}
 
-	// 3. Handle file upload (opsional untuk update)
+	// 3. Handle file upload — gunakan key "image" (konsisten dengan Create & frontend)
 	filePath := existingFlyerGallery.Image
 	oldFilePath := existingFlyerGallery.Image
 	newFileUploaded := false
 
-	file, err := c.FormFile("file")
-	if err == nil { // Ada file baru
-		// Validasi tipe file
-		allowedExtensions := map[string]bool{
-			".jpg":  true,
-			".jpeg": true,
-			".png":  true,
-			".gif":  true,
-			".webp": true,
-		}
-
-		ext := strings.ToLower(filepath.Ext(file.Filename))
-		if !allowedExtensions[ext] {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid file type. Only jpg, jpeg, png, gif, webp allowed",
-			})
+	file, err := c.FormFile("image") // ← FIX: was "file", sekarang "image"
+	if err == nil {                   // Ada file baru diupload
+		// Validasi tipe & ukuran
+		ext, errMsg := validateImageFile(file.Filename, file.Size)
+		if errMsg != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"message": errMsg})
 			return
 		}
 
-		// Validasi ukuran file
-		maxSize := int64(5 * 1024 * 1024) // 5MB
-		if file.Size > maxSize {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "File size too large. Maximum 5MB allowed",
-			})
+		// Generate path file baru
+		newFilePath, err := saveUploadedFile(c, file.Filename, ext)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
-		}
-
-		uploadPath := "uploads/"
-		if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": "Failed to create upload directory",
-				"error":   err.Error(),
-			})
-			return
-		}
-
-		// Nama file baru
-		filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
-		filePath = uploadPath + filename
-
-		// Cek duplikasi
-		if _, err := os.Stat(filePath); err == nil {
-			randomSuffix := fmt.Sprintf("_%d", time.Now().UnixNano())
-			filenameWithoutExt := strings.TrimSuffix(filename, filepath.Ext(filename))
-			filename = fmt.Sprintf("%s%s%s", filenameWithoutExt, randomSuffix, ext)
-			filePath = uploadPath + filename
 		}
 
 		// Simpan file baru
-		if err := c.SaveUploadedFile(file, filePath); err != nil {
+		if err := c.SaveUploadedFile(file, newFilePath); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": "Failed to save file",
 				"error":   err.Error(),
@@ -305,16 +271,16 @@ func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 			return
 		}
 
+		filePath = newFilePath
 		newFileUploaded = true
 		fmt.Printf("New file uploaded: %s\n", filePath)
 	}
 
-	// 4. Ambil field dari form
+	// 4. Ambil field dari form, gunakan nilai lama jika kosong
 	title := c.PostForm("title")
 	description := c.PostForm("description")
 	isActive := c.PostForm("is_active")
 
-	// Gunakan nilai lama jika tidak ada input baru
 	if title == "" {
 		title = existingFlyerGallery.Title
 	}
@@ -322,12 +288,11 @@ func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 		description = existingFlyerGallery.Description
 	}
 
-	// Parse is_active
+	// 5. Parse is_active
 	isActiveBool := existingFlyerGallery.IsActive
 	if isActive != "" {
 		isActiveBool, err = strconv.ParseBool(isActive)
 		if err != nil {
-			// Rollback file baru jika ada
 			if newFileUploaded {
 				os.Remove(filePath)
 			}
@@ -339,7 +304,7 @@ func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 		}
 	}
 
-	// 5. Buat payload
+	// 6. Buat payload & update ke database
 	payload := models.FlyerGallery{
 		ID:          uint(uint64Val),
 		Title:       title,
@@ -348,7 +313,6 @@ func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 		IsActive:    isActiveBool,
 	}
 
-	// 6. Update ke database
 	data, err := ctrl.flyerGalleryService.Update(payload)
 	if err != nil {
 		// Rollback: hapus file baru jika gagal update database
@@ -359,7 +323,6 @@ func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 				fmt.Printf("Rolled back: Deleted new file %s due to database error\n", filePath)
 			}
 		}
-
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed to update flyer gallery",
 			"error":   err.Error(),
@@ -367,7 +330,7 @@ func (ctrl *FlyerGalleryController) Update(c *gin.Context) {
 		return
 	}
 
-	// 7. Hapus file lama jika ada file baru
+	// 7. Hapus file lama jika berhasil upload file baru
 	if newFileUploaded && oldFilePath != "" && oldFilePath != filePath {
 		if err := os.Remove(oldFilePath); err != nil {
 			fmt.Printf("Warning: Failed to delete old file %s: %v\n", oldFilePath, err)
@@ -405,8 +368,7 @@ func (ctrl *FlyerGalleryController) Delete(c *gin.Context) {
 	}
 
 	// 3. Delete dari database
-	err = ctrl.flyerGalleryService.Delete(uint(uint64Val))
-	if err != nil {
+	if err = ctrl.flyerGalleryService.Delete(uint(uint64Val)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed to delete flyer gallery",
 			"error":   err.Error(),
